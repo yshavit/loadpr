@@ -1,0 +1,37 @@
+#!/bin/bash
+
+PR_NUM=$1
+
+if [ -z "$PR_NUM" ]; then
+  echo "Usage: $0 <pr num>"
+  exit 1
+fi
+
+REPO=$(git remote -vv | grep '\(fetch\)'| sed -E 's/.*git@github.com:([^.]*)\.git \(fetch\)/\1/')
+if [ $? != '0' ]; then
+  echo "Not in a github repo"
+  exit 1
+fi
+
+TOKEN=$(cat ~/.github-token)
+if [ -z "$TOKEN" ]; then
+  echo "Please put a github token in ~/.github-token"
+  exit 1
+fi
+
+PR_INFO=$(curl -H "Authorization: token $(cat ~/.github-token)" "https://api.github.com/repos/$REPO/pulls/$PR_NUM" 2> /dev/null)
+HEAD_SHA=$(python -c 'import json; import sys; print json.load(sys.stdin)["head"]["sha"]' <<< "$PR_INFO" 2>/dev/null)
+BASE_SHA=$(python -c 'import json; import sys; print json.load(sys.stdin)["base"]["sha"]' <<< "$PR_INFO" 2>/dev/null)
+
+if [ -z "$HEAD_SHA" ] || [ -z "$BASE_SHA" ]; then
+  echo "Couldn't get PR info. Is the PR id correct? Is your token in ~/.github-token valid?"
+  exit 1
+fi
+
+echo "Staging merge of $HEAD_SHA into $BASE_SHA"
+
+git fetch
+git checkout -b "pr${PR_NUM}" "$BASE_SHA"
+git merge --no-ff --no-commit "$HEAD_SHA"
+git reset HEAD^
+
