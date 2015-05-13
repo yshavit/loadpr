@@ -3,8 +3,20 @@
 PR_NUM=$1
 
 if [ -z "$PR_NUM" ]; then
-  echo "Usage: $0 <pr num>"
+  echo "Usage: $0 <pr num OR \"unload\">"
   exit 1
+fi
+
+if [ "$PR_NUM" = "unload" ]; then
+  BRANCH_NAME=$(git branch |grep '^*' | sed 's/^\* *//')
+  if [ "${BRANCH_NAME:0:2}" != "pr" ]; then
+    echo 'Can only unload if current branch starts with "pr"'
+    exit 1
+  fi
+  git checkout . && git clean -f -d && git checkout master && git branch -D "$BRANCH_NAME"
+  echo "Unloaded and deleted $BRANCH_NAME. Current branches:"
+  git branch
+  exit
 fi
 
 REPO=$(git remote -vv | grep '\(fetch\)'| sed -E 's/.*git@github.com:([^.]*)\.git \(fetch\)/\1/')
@@ -30,6 +42,7 @@ fi
 
 echo "Staging merge of $HEAD_SHA into $BASE_SHA"
 
+set -e
 git fetch
 git checkout -b "pr${PR_NUM}" "$BASE_SHA"
 git merge --no-ff --no-commit "$HEAD_SHA"
