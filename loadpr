@@ -13,7 +13,7 @@ if [ "$PR_NUM" = "unload" ]; then
     echo 'Can only unload if current branch starts with "pr"'
     exit 1
   fi
-  git checkout . && git clean -f -d && git checkout master && git branch -D "$BRANCH_NAME"
+  git commit -am 'pre-unload commit'  && git clean -f -d && git checkout master && git branch -D "$BRANCH_NAME"
   echo "Unloaded and deleted $BRANCH_NAME. Current branches:"
   git branch
   exit
